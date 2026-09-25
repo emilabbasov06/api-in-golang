@@ -1,10 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
+
+	"api_proj/internal/api/middlewares"
 )
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
@@ -14,20 +16,6 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 func teachersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Println(r.URL.Path)
-		userID := strings.TrimSuffix(
-			strings.TrimPrefix(r.URL.Path, "/teachers/"),
-			"/",
-		)
-
-		name := r.URL.Query().Get("name")
-		if name == "" {
-			name = "Emil"
-		}
-
-		fmt.Println(name)
-		fmt.Println(userID)
-
 		w.Write([]byte("Hello from teachers route - GET"))
 	case http.MethodPost:
 		w.Write([]byte("Hello from teachers route - POST"))
@@ -72,14 +60,27 @@ func execsHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	port := ":3000"
+	cert := "cert.pem"
+	key := "key.pem"
 
-	http.HandleFunc("/", rootHandler)
-	http.HandleFunc("/teachers/", teachersHandler)
-	http.HandleFunc("/students/", studentsHandler)
-	http.HandleFunc("/execs/", execsHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", rootHandler)
+	mux.HandleFunc("/teachers/", teachersHandler)
+	mux.HandleFunc("/students/", studentsHandler)
+	mux.HandleFunc("/execs/", execsHandler)
 
-	fmt.Println("Server is running on port:", port)
-	err := http.ListenAndServe(port, nil)
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+
+	server := &http.Server{
+		Addr:      port,
+		Handler:   middlewares.SecurityHeaders(middlewares.Cors(mux)),
+		TLSConfig: tlsConfig,
+	}
+
+	fmt.Println("Server is running on port", port)
+	err := server.ListenAndServeTLS(cert, key)
 	if err != nil {
 		log.Fatalln("Error starting the server", err)
 	}
