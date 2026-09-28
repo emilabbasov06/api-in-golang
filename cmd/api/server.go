@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"api_proj/internal/api/middlewares"
 )
@@ -73,9 +74,21 @@ func main() {
 		MinVersion: tls.VersionTLS12,
 	}
 
+	rl := middlewares.NewRateLimiter(5, time.Minute)
+
 	server := &http.Server{
-		Addr:      port,
-		Handler:   middlewares.SecurityHeaders(middlewares.Cors(mux)),
+		Addr: port,
+		Handler: rl.Middleware(
+			middlewares.ResponseTimeMiddleware(
+				middlewares.SecurityHeaders(
+					middlewares.Cors(
+						middlewares.Compression(
+							mux,
+						),
+					),
+				),
+			),
+		),
 		TLSConfig: tlsConfig,
 	}
 
