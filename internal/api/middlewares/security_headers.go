@@ -1,9 +1,14 @@
 package middlewares
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 func SecurityHeaders(next http.Handler) http.Handler {
+	fmt.Println("SecurityHeaders Middleware...")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("SecurityHeaders Middleware being returned...")
 		w.Header().Set("X-DNS-Prefetch-Control", "off")                                           // disables DNS Prefetching
 		w.Header().Set("X-Frame-Options", "DENY")                                                 // prevents the <iframe> action
 		w.Header().Set("X-XSS-Protection", "1;mode-block")                                        // enables Cross-Site Scripting Filter

@@ -75,20 +75,28 @@ func main() {
 	}
 
 	rl := middlewares.NewRateLimiter(5, time.Minute)
+	hppOptions := middlewares.HPPOptions{
+		CheckQuery:                  true,
+		CheckBody:                   true,
+		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
+		Whitelist:                   []string{"sortBy", "sortOrder", "name", "age", "class"},
+	}
 
-	server := &http.Server{
-		Addr: port,
-		Handler: rl.Middleware(
+	secureMux := middlewares.Cors(
+		rl.Middleware(
 			middlewares.ResponseTimeMiddleware(
 				middlewares.SecurityHeaders(
-					middlewares.Cors(
-						middlewares.Compression(
-							mux,
-						),
+					middlewares.Compression(
+						middlewares.Hpp(hppOptions)(mux),
 					),
 				),
 			),
 		),
+	)
+
+	server := &http.Server{
+		Addr:      port,
+		Handler:   secureMux,
 		TLSConfig: tlsConfig,
 	}
 
@@ -97,4 +105,14 @@ func main() {
 	if err != nil {
 		log.Fatalln("Error starting the server", err)
 	}
+}
+
+type Middleware func(http.Handler) http.Handler
+
+func applyMiddlewares(handler http.Handler, middlewares ...Middleware) http.Handler {
+	for _, middleware := range middlewares {
+		handler = middleware(handler)
+	}
+
+	return handler
 }
